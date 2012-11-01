@@ -1,15 +1,12 @@
 /*
- * 2012-4-18
- *
  * 参数: active:激活<boolean>,
  *		 orient:信息流方向<boolean>,
  *		 fun:执行函数<function>,
  *		 param:参数<{ W:宽度<number>, H:高度<number>, P:面板位置<"TL|TR|BL|BR">, T:颜色<"dark|light|mono"> }>
  *
- * 方法: D(信息), F(函数追踪), X(时间), J(对象数组), A(数组), T(二维数组), Z(DOM对象), N(浏览器)
- *
- * 		 V(变量追踪) Q(变量名)
  */
+
+window.debug=debug
 
 function debug(){
 	//--------------------------------------------------------------------
@@ -22,7 +19,8 @@ function debug(){
 				fun=arguments[i];
 				window.onload=function(){
 					startTime=new Date();
-					if(fun)getError(fun);
+					// if(fun)getError(fun);
+					fun()
 				};
 				break;
 			case "number":orient=arguments[i];break;
@@ -39,7 +37,6 @@ function debug(){
 	D=function(){},DD=function(){D.apply(this,arguments);S();},//打印 Array|Number|String
 	Q=function(){},QQ=function(){Q.apply(this,arguments);S();},//打印 Array|Number|String（条件）
 	A=function(){},AA=function(){A.apply(this,arguments);S();},//打印 Array
-	T=function(){},TT=function(){T.apply(this,arguments);S();},//打印 Table
 	J=function(){},JJ=function(){J.apply(this,arguments);S();},//打印 Object
 	F=function(){},FF=function(){F.apply(this,arguments);S();},//打印 Function
 	Z=function(){},ZZ=function(){Z.apply(this,arguments);S();},//打印 Dom对象
@@ -53,25 +50,8 @@ function debug(){
 		msgInset(getNum()+getMsg(arguments)+"<br/>");
 	};
 	Q=function(){
-		var args=Array.prototype.slice.apply(arguments).pop();
-		if(typeof arguments[0]=="boolean" && arguments[0])D.call(this,args);
-	};
-	T=function(table){
-		var html="<span class='arr'>"+table.name+":</span>";
-		html+="<table class='table'><tr><th>#</th>";
-		for(var i in table.header){
-			html+="<th>"+table.header[i]+"</th>";
-		};
-		html+="</tr>";
-		for(var i in table.data){
-			html+="<tr><td>"+msgStyle(parseInt(i))+"</td>";
-			for(var j in table.data[i]){
-				html+="<td><a title='"+table.data[i][j]+"'>"+msgStyle(table.data[i][j])+"</a></td>";
-			};
-			html+="</tr>";
-		};
-		html+="</table>";
-		msgInset(html);
+		var args=Array.prototype.slice.apply(arguments).slice(1);
+		if(typeof arguments[0]=="boolean" && arguments[0])D.apply(this,args);
 	};
 	A=function(arr){
 		var html=getNum()+style("arr","[array]");
@@ -122,20 +102,16 @@ function debug(){
 		html+="</span>";
 		msgInset(html);
 		function objTree(all,indexArr){
-			//计算长度
 			var len=0;
-			if(typeof all=="object"){for (var i in all){len++;}};//子对象长度
-			if(len==0)return false;
-			//循环 count++
 			var count=0;
-			//循环
+			if(typeof all=="object")for(var i in all)len++;
+			if(len==0)return false;
 			for(var i in all){
 				var blank="";
 				for(var j=indexArr.length-1;j>=0;j--){
-					if(indexArr[j]==false){blank="|."+blank;}
-					else{blank=".."+blank;}
+					if(indexArr[j]==false){blank="|&nbsp;"+blank;}
+					else{blank="&nbsp;&nbsp;"+blank;}
 				};
-				//D(blank)
 				if(count!=(len-1)){
 					var branch="|-";
 					indexArr.push(false);
@@ -143,15 +119,11 @@ function debug(){
 					var branch="`-";
 					indexArr.push(true);
 				};
-				
-				
 				var str=blank+branch+style("cls",i+": ")+msgStyle(all[i]);
 				
 				html+=str+"<br/>";
-				
-				//数组不显示分支
+
 				objTree(all[i],indexArr);
-				
 				
 				indexArr.pop();
 				count++;
@@ -164,7 +136,7 @@ function debug(){
 		html+="</span>";
 		msgInset(html);
 		function domTree(all,indexArr){
-			var len=all.children.length;
+			var len=all.childNodes.length;
 			for(var i=0;i<len;i++){
 				
 				var blank="";
@@ -180,17 +152,18 @@ function debug(){
 					indexArr.push(true);
 				};
 				
-				var selfNode=all.children[i];
+				var selfNode=all.childNodes[i];
 				
 				var id=(selfNode.getAttribute("id")!=null)?     style("id"," #"+selfNode.getAttribute("id")+"")    :"";
 				var cls=(selfNode.getAttribute("class")!=null)? style("cls"," ."+selfNode.getAttribute("class")+""):"";
+				var value=selfNode.nodeValue?htmlReplace(selfNode.nodeValue):""
 				
 				var label=style("tag","&lt;"+selfNode.nodeName.toLowerCase()+"&gt;");
-				var str=blank+branch+label+id+cls;
+				var str=blank+branch+label+id+cls+value;
 				
 				html+=str+"<br/>";
 				
-				if(selfNode.children.length>0)domTree(selfNode,indexArr);
+				if(selfNode.childNodes.length>0)domTree(selfNode,indexArr);
 				indexArr.pop();
 			};
 		};
@@ -331,59 +304,20 @@ function debug(){
 		};
 	};
 	function htmlReplace(str){
-		//方法一
-		str=str.replace(/</g,"&lt;");
-		return str.replace(/>/g,"&gt;");
-		/*方法二
-		return str.replace(/(<[^<>]*>)/g,function($1){
-			return "&lt;"+$1.slice(1,-1)+"&gt;"
-		});
-		*/
+		return str.replace(/</g,"&lt;").replace(/>/g,"&gt;");
 	};
 	function style(str,text){
 		if(theme!="mono"){return "<span class='"+str+"'>"+text+"</span>";}
 		else{return text;};
 	};
-	function getFun(fn){
-		fn=fn.toString();
-		fn=fn.replace(/function\s*([a-zA-Z0-9_]*)\s*[\S\W]*/,"$1");
-		fn=(fn=="")?fn:"------"+style("fun",fn+' ( )');
-		return fn;
-	};
 	function getNum(){
 		num++;
 		var num_str=style("index",num);
-		var numCount_str="";
-		if(num<100){numCount_str=(num<10)?(num_str+"===>"):(num_str+"==>");}else{numCount_str=num_str+"=>";};
-		return(numCount_str);
-	};
-	function getError(fn){
-		if(nav=="Gecko"){
-			try{fn();}
-			catch(e){
-				var html="Error>>"+style("warm",e.line)+"."+
-						 style("warm",e.message)+"<br/>"+
-						 style("warm",e.sourceURL)+"<br/>";
-				msgInset(html);
-		    };
-		}else if(nav=="Firefox"){
-		    try{fn();}
-			catch(e){
-				var html="Error>>"+style("warm",e.lineNumber)+"."+
-						 style("warm",e.message)+"<br/>"+
-						 style("warm",e.fileName)+"<br/>";
-				msgInset(html);
-		    };
-		}else{
-			window.onerror=function(msg,url,line){
-				var html=style("warm",line)+"==>"+
-						 style("warm",msg)+"<br/>"+
-						 style("warm",url)+"<br/>";
-				msgInset(html);
-			};
-			fn();
-		};
-		showMsg();
+		return num_str+(num<10
+							?"===>"
+							:num<100
+								?"==>"
+								:"=>");
 	};
 	function getNav(){
 		var sUA=navigator.userAgent;
@@ -407,13 +341,13 @@ function debug(){
 		<title>debug</title>\
 		<style>\
 		body{padding:0; margin:0;}\
-		#wrap{ color:'+theme.txt+'; font-weight:900; font-family:Courier New; font-size:16px; line-height:12px;\
+		#wrap{ color:'+theme.txt+'; font-weight:900; font-family:Courier New; font-size:12px; line-height:12px;\
 		position:absolute; width:100%; height:100%; overflow:auto;}\
 		#wrap::-webkit-scrollbar{width:6px; height:6px; background:transparent;}\
 		#wrap::-webkit-scrollbar-thumb{background:#666; border-radius:3px; }\
 		#wrap::-webkit-scrollbar-corner{display:none;}\
 		#debugDiv{margin:5px;}\
-		.table,.str,.obj,.fun,.num,.boo,.arr,.time,.index,.txt,.warm,.cls,.id,.tag{font-family:sans-serif; font-size:12px;white-space:nowrap; }\
+		.table,.str,.obj,.fun,.num,.boo,.arr,.time,.txt,.warm,.cls,.id,.tag{font-family:sans-serif; white-space:nowrap; }\
 		.table{color:'+theme.cls+'; border:1px solid #444;}\
 		.table th{text-align:left;}\
 		.table td{max-width:200px; overflow:hidden}\
